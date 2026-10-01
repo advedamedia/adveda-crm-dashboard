@@ -92,6 +92,12 @@
           <span class="nav-icon">👥</span> Team Force
         </a>
       </div>
+      <div class="nav-section" id="navSectionIntegrations">
+        <div class="nav-section-title">Settings</div>
+        <a class="nav-item" onclick="showPage('integrations')" id="nav-integrations">
+          <span class="nav-icon">⚡</span> Integrations & Webhooks
+        </a>
+      </div>
       <div class="nav-section" id="navSectionClients">
         <div class="nav-section-title">Clients</div>
         <a class="nav-item" onclick="showPage('clients')" id="nav-clients">
@@ -361,7 +367,7 @@
 
       <div class="card" style="padding:28px; max-width:800px;">
         <h2 style="margin-bottom:6px">🏢 Client Onboarding Form</h2>
-        <p style="color:var(--text-secondary);margin-bottom:24px">Enter business details, client login credentials, and n8n webhook URL.</p>
+        <p style="color:var(--text-secondary);margin-bottom:24px">Enter business profile details and client login credentials.</p>
 
         <div id="onboardingMsg"></div>
 
@@ -406,7 +412,7 @@
           </div>
         </div>
 
-        <h3 style="font-size:14px; color:var(--primary); margin-top:20px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:6px;">2. Client Login & Credentials</h3>
+        <h3 style="font-size:14px; color:var(--primary); margin-top:20px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:6px;">2. Client Login & Access Credentials</h3>
 
         <div class="form-row">
           <div class="form-group">
@@ -421,18 +427,74 @@
           </div>
         </div>
 
-        <h3 style="font-size:14px; color:var(--primary); margin-top:20px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:6px;">3. Integrations & Automation</h3>
-
-        <div class="form-group">
-          <label>n8n Webhook URL (Optional)</label>
-          <input type="url" id="ob_n8n_webhook_url" placeholder="e.g. https://n8n.yourdomain.com/webhook/adveda-leads"/>
-          <div class="input-hint">Webhook URL for sending real-time lead updates to n8n workflows</div>
-        </div>
-
-        <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:24px">
+        <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:28px">
           <button class="btn btn-secondary" onclick="showPage('clients')">Cancel</button>
-          <button class="btn btn-primary btn-lg" onclick="submitClient()">🚀 Create Client Account</button>
+          <button class="btn btn-primary btn-lg" type="button" onclick="submitClient()">🚀 Create Client Account</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ── INTEGRATIONS & SETTINGS PAGE ── -->
+    <div id="page-integrations" class="page">
+      <div class="page-header">
+        <div>
+          <h1>⚡ Settings & Integrations</h1>
+          <p>Configure n8n Webhook URLs and automation settings for your CRM</p>
+        </div>
+      </div>
+
+      <div class="card" style="padding:24px; max-width:850px; margin-bottom:20px;">
+        <div class="card-header" style="padding-bottom:12px; border-bottom:1px solid var(--border); margin-bottom:20px;">
+          <span class="card-title">🔗 n8n Webhook Configuration</span>
+        </div>
+
+        <div id="integrationsMsg"></div>
+
+        <!-- Client selector for Admin role -->
+        <div class="form-group" id="integrationsClientSelectGroup" style="display:none; margin-bottom:20px;">
+          <label style="font-weight:600; margin-bottom:6px; display:block;">Select Client Account</label>
+          <select id="integrationsClientSelect" onchange="loadIntegrationsSettings()" style="width:100%; padding:10px; background:var(--bg-surface); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:14px;"></select>
+        </div>
+
+        <div class="form-group" style="margin-bottom:20px;">
+          <label style="font-weight:600; margin-bottom:6px; display:block;">n8n Webhook URL</label>
+          <input type="url" id="n8nWebhookUrlInput" placeholder="https://n8n.yourdomain.com/webhook/adveda-crm-leads" style="width:100%; padding:10px; background:var(--bg-surface); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:14px;"/>
+          <div class="input-hint" style="margin-top:6px; font-size:12px; color:var(--text-muted)">
+            Whenever a lead is created or updated in the CRM, lead data will automatically post to this n8n Webhook URL.
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="saveIntegrationsSettings()" style="padding:10px 20px;">💾 Save Integration Settings</button>
+          <button class="btn btn-secondary" onclick="testN8nWebhook()" style="padding:10px 16px;">🚀 Send Test Webhook to n8n</button>
+        </div>
+      </div>
+
+      <!-- Payload documentation card -->
+      <div class="card" style="padding:24px; max-width:850px;">
+        <div class="card-header" style="padding-bottom:12px; border-bottom:1px solid var(--border); margin-bottom:16px;">
+          <span class="card-title">📋 Webhook JSON Payload Format</span>
+        </div>
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">n8n webhooks will receive the following JSON structure when triggered:</p>
+        <pre style="background:var(--bg-surface); padding:16px; border-radius:6px; font-family:monospace; font-size:12px; color:#10b981; overflow-x:auto;">
+{
+  "event": "lead.created",
+  "client_id": "client_123",
+  "client_name": "Apex Real Estate",
+  "timestamp": "2026-10-01T19:30:00.000Z",
+  "lead": {
+    "id": "lead_999",
+    "name": "Rahul Sharma",
+    "phone": "919876543210",
+    "email": "rahul@example.com",
+    "budget": "75 Lakhs",
+    "location": "Mumbai",
+    "property_type": "3 BHK Apartment",
+    "lead_score": "HOT",
+    "lead_stage": "qualified"
+  }
+}
+        </pre>
       </div>
     </div>
 

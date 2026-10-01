@@ -166,6 +166,7 @@ function showPage(name) {
   if (name === 'onboarding') resetWizard();
   if (name === 'reports') initReportsPage();
   if (name === 'team') initTeamPage();
+  if (name === 'integrations') initIntegrationsPage();
 }
 
 function setFilter(score) {
@@ -766,38 +767,43 @@ async function saveClientEdit() {
 // ══════════════════════════════════
 
 async function submitClient() {
-  const name = document.getElementById('ob_name').value.trim();
-  const login_id = document.getElementById('ob_login_id').value.trim();
-  const password = document.getElementById('ob_password').value.trim();
-
   const msgDiv = document.getElementById('onboardingMsg');
+  if (msgDiv) msgDiv.innerHTML = '';
+
+  const getVal = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  };
+
+  const name = getVal('ob_name');
+  const login_id = getVal('ob_login_id');
+  const password = getVal('ob_password');
 
   if (!name) {
-    msgDiv.innerHTML = '<div class="alert alert-error">❌ Business Name is required.</div>';
+    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Business Name is required.</div>';
     return;
   }
   if (!login_id) {
-    msgDiv.innerHTML = '<div class="alert alert-error">❌ Client Login Identifier is required.</div>';
+    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Client Login Identifier is required.</div>';
     return;
   }
   if (!password) {
-    msgDiv.innerHTML = '<div class="alert alert-error">❌ Client Password is required.</div>';
+    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Client Password is required.</div>';
     return;
   }
 
   const payload = {
     name,
-    business_type: document.getElementById('ob_business_type').value,
-    location: document.getElementById('ob_location').value.trim(),
-    contact_person: document.getElementById('ob_contact_person').value.trim(),
-    contact_phone: document.getElementById('ob_contact_phone').value.trim(),
-    contact_email: document.getElementById('ob_contact_email').value.trim(),
+    business_type: getVal('ob_business_type') || 'Real Estate Agency',
+    location: getVal('ob_location'),
+    contact_person: getVal('ob_contact_person'),
+    contact_phone: getVal('ob_contact_phone'),
+    contact_email: getVal('ob_contact_email'),
     login_id,
-    verify_token: password,
-    n8n_webhook_url: document.getElementById('ob_n8n_webhook_url').value.trim()
+    verify_token: password
   };
 
-  msgDiv.innerHTML = '<div class="alert alert-info"><span class="spinner"></span> Creating client account...</div>';
+  if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-info"><span class="spinner"></span> Creating client account...</div>';
 
   try {
     const res = await fetch(`${API}/api/clients`, {
@@ -805,20 +811,20 @@ async function submitClient() {
     });
     const data = await res.json();
     if (res.ok) {
-      msgDiv.innerHTML = `<div class="alert alert-success">✅ Client "${name}" created successfully!</div>`;
+      if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-success">✅ Client "${name}" created successfully!</div>`;
       setTimeout(() => {
-        // Clear fields
-        ['ob_name', 'ob_location', 'ob_contact_person', 'ob_contact_phone', 'ob_contact_email', 'ob_login_id', 'ob_password', 'ob_n8n_webhook_url']
+        ['ob_name', 'ob_location', 'ob_contact_person', 'ob_contact_phone', 'ob_contact_email', 'ob_login_id', 'ob_password']
           .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-        msgDiv.innerHTML = '';
+        if (msgDiv) msgDiv.innerHTML = '';
         loadClients();
         showPage('clients');
-      }, 1500);
+      }, 1200);
     } else {
-      msgDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${data.error}</div>`;
+      if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${data.error || 'Failed to create client.'}</div>`;
     }
   } catch (e) {
-    msgDiv.innerHTML = '<div class="alert alert-error">❌ Could not connect to server.</div>';
+    console.error('submitClient error:', e);
+    if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-error">❌ Could not connect to server: ${e.message}</div>`;
   }
 }
 
@@ -1941,5 +1947,110 @@ async function deleteTeamMember(name) {
   } catch (err) {
     console.error('Error deleting team member:', err);
     alert('Could not connect to server.');
+  }
+}
+
+// ══════════════════════════════════
+//  SETTINGS & INTEGRATIONS LOGIC
+// ══════════════════════════════════
+let currentIntegrationsClientId = '';
+
+async function initIntegrationsPage() {
+  const role = localStorage.getItem('saas_role') || 'admin';
+  const cId = localStorage.getItem('saas_client_id') || '';
+  const msgDiv = document.getElementById('integrationsMsg');
+  if (msgDiv) msgDiv.innerHTML = '';
+
+  const group = document.getElementById('integrationsClientSelectGroup');
+  const sel = document.getElementById('integrationsClientSelect');
+
+  if (role === 'admin') {
+    if (group) group.style.display = 'block';
+    try {
+      const res = await fetch(`${API}/api/clients`, { headers: headers() });
+      const clients = await res.json();
+      if (Array.isArray(clients) && clients.length) {
+        sel.innerHTML = clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        currentIntegrationsClientId = sel.value;
+      }
+    } catch (e) {}
+  } else {
+    if (group) group.style.display = 'none';
+    currentIntegrationsClientId = cId;
+  }
+
+  loadIntegrationsSettings();
+}
+
+async function loadIntegrationsSettings() {
+  const role = localStorage.getItem('saas_role') || 'admin';
+  const sel = document.getElementById('integrationsClientSelect');
+  if (role === 'admin' && sel) {
+    currentIntegrationsClientId = sel.value;
+  }
+
+  try {
+    const params = currentIntegrationsClientId ? `?client_id=${currentIntegrationsClientId}` : '';
+    const res = await fetch(`${API}/api/settings/integrations${params}`, { headers: headers() });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      document.getElementById('n8nWebhookUrlInput').value = data.n8n_webhook_url || '';
+    }
+  } catch (e) {
+    console.error('Error loading integrations settings:', e);
+  }
+}
+
+async function saveIntegrationsSettings() {
+  const msgDiv = document.getElementById('integrationsMsg');
+  const n8n_webhook_url = document.getElementById('n8nWebhookUrlInput').value.trim();
+
+  if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-info"><span class="spinner"></span> Saving integration settings...</div>';
+
+  try {
+    const res = await fetch(`${API}/api/settings/integrations`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({
+        client_id: currentIntegrationsClientId,
+        n8n_webhook_url
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-success">✅ Integration settings saved successfully!</div>';
+    } else {
+      if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-error">❌ ${data.error || 'Failed to save settings.'}</div>`;
+    }
+  } catch (e) {
+    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Connection error.</div>';
+  }
+}
+
+async function testN8nWebhook() {
+  const msgDiv = document.getElementById('integrationsMsg');
+  const n8n_webhook_url = document.getElementById('n8nWebhookUrlInput').value.trim();
+
+  if (!n8n_webhook_url) {
+    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Please enter an n8n Webhook URL before testing.</div>';
+    return;
+  }
+
+  if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-info"><span class="spinner"></span> Sending test webhook to n8n...</div>';
+
+  try {
+    const res = await fetch(`${API}/api/settings/test-webhook`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ n8n_webhook_url })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-success">${data.message || '✅ Test webhook sent successfully!'}</div>`;
+    } else {
+      if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-error">❌ ${data.error || 'Test webhook failed.'}</div>`;
+    }
+  } catch (e) {
+    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Could not trigger webhook test.</div>';
   }
 }

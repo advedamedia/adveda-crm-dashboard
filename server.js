@@ -259,7 +259,7 @@ app.post('/api/clients', adminAuth, async (req, res) => {
   const defaultPassword = verify_token || req.body.password || 'adveda123';
   const defaultPhoneId = req.body.phone_number_id || login_id || contact_phone || `client_${Date.now()}`;
 
-  const payload = {
+  const fullPayload = {
     name,
     business_type: business_type || 'Real Estate',
     contact_person: contact_person || '',
@@ -275,18 +275,49 @@ app.post('/api/clients', adminAuth, async (req, res) => {
     created_at: new Date().toISOString()
   };
 
-  const { data, error } = await supabase
-    .from('clients')
-    .insert(payload)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .insert(fullPayload)
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Error creating client:', error);
-    return res.status(500).json({ error: error.message });
+    if (!error && data) {
+      return res.json({ success: true, client: data });
+    }
+
+    console.warn('Full payload insert failed, trying base columns:', error?.message);
+
+    const basePayload = {
+      name,
+      business_type: business_type || 'Real Estate',
+      contact_person: contact_person || '',
+      contact_phone: contact_phone || '',
+      contact_email: contact_email || '',
+      verify_token: defaultPassword,
+      status: 'active',
+      phone_number_id: defaultPhoneId,
+      whatsapp_number: contact_phone || '',
+      created_at: new Date().toISOString()
+    };
+
+    const { data: baseData, error: baseError } = await supabase
+      .from('clients')
+      .insert(basePayload)
+      .select()
+      .single();
+
+    if (baseError) {
+      console.error('Base insert failed:', baseError.message);
+      return res.status(500).json({ error: baseError.message });
+    }
+
+    return res.json({ success: true, client: baseData });
+
+  } catch (e) {
+    console.error('Error creating client:', e);
+    return res.status(500).json({ error: e.message });
   }
-
-  res.json({ success: true, client: data });
 });
 
 // PUT /api/clients/:id — Update client details
@@ -339,6 +370,101 @@ app.delete('/api/clients/:id', adminAuth, async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   res.json({ success: true });
+});
+
+// ─────────────────────────────────────────────
+//  SETTINGS & INTEGRATIONS APIs
+// ─────────────────────────────────────────────
+
+// GET /api/settings/integrations — Get client's integration settings
+app.get('/api/settings/integrations', adminAuth, async (req, res) => {
+  const targetClientId = req.user.role === 'client' ? req.user.clientId : (req.query.client_id || req.user.clientId);
+
+  if (!targetClientId && req.user.role === 'admin') {
+    const { data: firstClient } = await supabase.from('clients').select('id, name, n8n_webhook_url').eq('status', 'active').limit(1).single();
+    if (firstClient) {
+      return res.json({ success: true, client_id: firstClient.id, name: firstClient.name, n8n_webhook_url: firstClient.n8n_webhook_url || '' });
+    }
+    return res.json({ success: true, client_id: null, name: 'No Client', n8n_webhook_url: '' });
+  }
+
+  const { data: client, error } = await supabase
+    .from('clients')
+    .select('id, name, n8n_webhook_url')
+    .eq('id', targetClientId)
+    .single();
+
+  if (error || !client) return res.status(404).json({ error: 'Client not found' });
+  res.json({ success: true, client_id: client.id, name: client.name, n8n_webhook_url: client.n8n_webhook_url || '' });
+});
+
+// POST /api/settings/integrations — Save client's n8n webhook URL
+app.post('/api/settings/integrations', adminAuth, async (req, res) => {
+  const { client_id, n8n_webhook_url } = req.body;
+  const targetClientId = req.user.role === 'client' ? req.user.clientId : (client_id || req.user.clientId);
+
+  if (!targetClientId) {
+    return res.status(400).json({ error: 'Client ID is required' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .update({ n8n_webhook_url: n8n_webhook_url || '' })
+      .eq('id', targetClientId)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ success: true, message: 'Integration settings saved successfully!', client: data });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/settings/test-webhook — Send test webhook event to n8n
+app.post('/api/settings/test-webhook', adminAuth, async (req, res) => {
+  const { n8n_webhook_url } = req.body;
+
+  if (!n8n_webhook_url) {
+    return res.status(400).json({ error: 'Please enter an n8n Webhook URL first.' });
+  }
+
+  try {
+    const testPayload = {
+      event: 'test.webhook',
+      client_name: 'Adveda Real Estate CRM Test',
+      timestamp: new Date().toISOString(),
+      lead: {
+        id: 'test_lead_001',
+        name: 'Test Lead (Sample)',
+        phone: '919999999999',
+        email: 'test@advedamedia.com',
+        budget: '50-75 Lakhs',
+        location: 'Sample City',
+        lead_score: 'HOT',
+        lead_stage: 'qualified'
+      }
+    };
+
+    const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+    const webhookRes = await fetch(n8n_webhook_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testPayload)
+    });
+
+    if (webhookRes.ok) {
+      return res.json({ success: true, message: `✅ Test webhook delivered successfully! HTTP Status ${webhookRes.status}` });
+    } else {
+      return res.status(400).json({ error: `n8n Webhook returned HTTP Status ${webhookRes.status}` });
+    }
+  } catch (e) {
+    return res.status(500).json({ error: `Webhook trigger failed: ${e.message}` });
+  }
 });
 
 // ─────────────────────────────────────────────
