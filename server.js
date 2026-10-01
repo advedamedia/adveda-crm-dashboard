@@ -1,5 +1,5 @@
 // server.js - Adveda CRM Admin Dashboard Backend Server
-// Standalone REST API server for https://mydashboard.advedamedia.com/
+// Standalone REST API server for https://dashboard.advedamedia.com/
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -18,7 +18,7 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'PotentialInfinity@2026';
 
 // Supabase client initialization
@@ -58,7 +58,7 @@ async function setBotPaused(leadId, isPaused) {
   }
 }
 
-// Admin Authentication Middleware
+// Admin / Client Authentication Middleware
 async function adminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
@@ -100,30 +100,33 @@ app.post('/api/auth', async (req, res) => {
 
   // Client authentication check
   if (!identifier || !password) {
-    return res.status(400).json({ error: 'Phone/Email and Password are required' });
+    return res.status(400).json({ error: 'Login ID / Phone / Email and Password are required' });
   }
 
   try {
     const { data: clients, error } = await supabase
       .from('clients')
-      .select('id, name, verify_token, whatsapp_number, contact_phone, contact_email, phone_number_id')
-      .eq('status', 'active');
+      .select('*');
 
     if (error || !clients) return res.status(401).json({ error: 'Invalid credentials' });
 
     const cleanId = identifier.replace(/[^0-9]/g, '');
-    const searchEmail = identifier.trim().toLowerCase();
+    const searchStr = identifier.trim().toLowerCase();
 
     const client = clients.find(c => {
+      if (c.status === 'archived' || c.status === 'inactive') return false;
+      const passMatch = c.verify_token === password;
+
       const cleanWa = (c.whatsapp_number || '').replace(/[^0-9]/g, '');
       const cleanPhone = (c.contact_phone || '').replace(/[^0-9]/g, '');
       const clientEmail = (c.contact_email || '').trim().toLowerCase();
-      const passMatch = c.verify_token === password;
+      const clientLoginId = (c.login_id || '').trim().toLowerCase();
 
       const identifierMatches = (
+        (clientLoginId && clientLoginId === searchStr) ||
+        (clientEmail && clientEmail === searchStr) ||
         (cleanId && cleanWa.endsWith(cleanId)) || 
-        (cleanId && cleanPhone.endsWith(cleanId)) || 
-        (clientEmail && clientEmail === searchEmail) ||
+        (cleanId && cleanPhone.endsWith(cleanId)) ||
         identifier === c.phone_number_id
       );
 
@@ -140,11 +143,202 @@ app.post('/api/auth', async (req, res) => {
       });
     }
 
-    return res.status(401).json({ error: 'Invalid phone/email or password' });
+    return res.status(401).json({ error: 'Invalid login details or password' });
   } catch (e) {
     console.error('Login error:', e);
     return res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// POST /api/auth/forgot-verify
+app.post('/api/auth/forgot-verify', async (req, res) => {
+  const { identifier } = req.body;
+  if (!identifier) return res.status(400).json({ error: 'Identifier required' });
+
+  try {
+    const { data: clients, error } = await supabase.from('clients').select('id, name, contact_email, contact_phone, whatsapp_number, login_id');
+    if (error || !clients) return res.status(404).json({ error: 'Client not found' });
+
+    const searchStr = identifier.trim().toLowerCase();
+    const cleanId = identifier.replace(/[^0-9]/g, '');
+
+    const client = clients.find(c => {
+      const clientEmail = (c.contact_email || '').trim().toLowerCase();
+      const clientLoginId = (c.login_id || '').trim().toLowerCase();
+      const cleanWa = (c.whatsapp_number || '').replace(/[^0-9]/g, '');
+      const cleanPhone = (c.contact_phone || '').replace(/[^0-9]/g, '');
+
+      return (
+        (clientLoginId && clientLoginId === searchStr) ||
+        (clientEmail && clientEmail === searchStr) ||
+        (cleanId && cleanWa.endsWith(cleanId)) ||
+        (cleanId && cleanPhone.endsWith(cleanId))
+      );
+    });
+
+    if (client) {
+      return res.json({ success: true, clientId: client.id, name: client.name });
+    }
+    return res.status(404).json({ error: 'No client matching provided email or phone' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/auth/forgot-reset
+app.post('/api/auth/forgot-reset', async (req, res) => {
+  const { clientId, password } = req.body;
+  if (!clientId || !password) return res.status(400).json({ error: 'Client ID and new password required' });
+
+  try {
+    const { error } = await supabase
+      .from('clients')
+      .update({ verify_token: password })
+      .eq('id', clientId);
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+//  CLIENT MANAGEMENT APIs
+// ─────────────────────────────────────────────
+
+// GET /api/clients — List clients
+app.get('/api/clients', adminAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const showArchived = req.query.show_archived === 'true';
+
+  let query = supabase.from('clients').select('*').order('created_at', { ascending: false });
+  if (!showArchived) {
+    query = query.neq('status', 'archived');
+  }
+
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+// GET /api/clients/:id — Get client detail
+app.get('/api/clients/:id', adminAuth, async (req, res) => {
+  if (req.user.role === 'client' && req.user.clientId !== req.params.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', req.params.id)
+    .single();
+
+  if (error) return res.status(404).json({ error: 'Client not found' });
+  res.json(data);
+});
+
+// POST /api/clients — Create new client
+app.post('/api/clients', adminAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const {
+    name, business_type, contact_person, contact_phone, contact_email,
+    location, login_id, verify_token, n8n_webhook_url
+  } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ error: 'Client/Business name is required' });
+  }
+
+  const defaultPassword = verify_token || req.body.password || 'adveda123';
+  const defaultPhoneId = req.body.phone_number_id || login_id || contact_phone || `client_${Date.now()}`;
+
+  const payload = {
+    name,
+    business_type: business_type || 'Real Estate',
+    contact_person: contact_person || '',
+    contact_phone: contact_phone || '',
+    contact_email: contact_email || '',
+    location: location || '',
+    login_id: login_id || contact_email || contact_phone || name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+    verify_token: defaultPassword,
+    n8n_webhook_url: n8n_webhook_url || '',
+    status: 'active',
+    phone_number_id: defaultPhoneId,
+    whatsapp_number: contact_phone || '',
+    created_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('clients')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating client:', error);
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json({ success: true, client: data });
+});
+
+// PUT /api/clients/:id — Update client details
+app.put('/api/clients/:id', adminAuth, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.clientId !== req.params.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const allowed = [
+    'name', 'business_type', 'contact_person', 'contact_phone', 'contact_email',
+    'location', 'login_id', 'verify_token', 'n8n_webhook_url', 'status', 'whatsapp_number'
+  ];
+
+  const updates = {};
+  for (const field of allowed) {
+    if (req.body[field] !== undefined) updates[field] = req.body[field];
+  }
+
+  const { data, error } = await supabase
+    .from('clients')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, client: data });
+});
+
+// POST /api/clients/:id/archive — Archive a client
+app.post('/api/clients/:id/archive', adminAuth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const { data, error } = await supabase
+    .from('clients')
+    .update({ status: 'archived' })
+    .eq('id', req.params.id)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, client: data });
+});
+
+// DELETE /api/clients/:id — Permanently delete client
+app.delete('/api/clients/:id', adminAuth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+
+  const { error } = await supabase.from('clients').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ success: true });
 });
 
 // ─────────────────────────────────────────────
@@ -211,7 +405,7 @@ app.get('/api/leads/:id', adminAuth, async (req, res) => {
   res.json({ lead: enrichedLead, conversation: convo?.messages || [] });
 });
 
-// PUT /api/leads/:id — Update lead (notes, stage, follow-up, score)
+// PUT /api/leads/:id — Update lead
 app.put('/api/leads/:id', adminAuth, async (req, res) => {
   const { data: lead } = await supabase.from('leads').select('client_id').eq('id', req.params.id).single();
   if (lead && req.user.role === 'client' && lead.client_id !== req.user.clientId) {
@@ -242,10 +436,10 @@ app.put('/api/leads/:id', adminAuth, async (req, res) => {
     bot_paused: isBotPaused(data),
     assigned_to: data?.assigned_to || null
   };
-  res.json({ success: true, lead: enrichedLead });
+  res.json({ success: true, lead: data });
 });
 
-// PUT /api/leads/:id/pause-bot — Toggle Bot Pause/Resume for manual takeover
+// PUT /api/leads/:id/pause-bot
 app.put('/api/leads/:id/pause-bot', adminAuth, async (req, res) => {
   const { paused } = req.body;
   await setBotPaused(req.params.id, paused === true);
@@ -304,35 +498,16 @@ app.get('/api/dashboard/stats', adminAuth, async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
   const stats = {
-    total_leads: leads.length,
-    hot_leads: leads.filter(l => l.lead_score === 'HOT').length,
-    warm_leads: leads.filter(l => l.lead_score === 'WARM').length,
-    cold_leads: leads.filter(l => l.lead_score === 'COLD').length,
-    today_visits: leads.filter(l => l.site_visit_date === today).length,
-    site_visit_scheduled: leads.filter(l => l.lead_stage === 'site_visit_scheduled').length,
-    converted: leads.filter(l => l.lead_stage === 'converted').length
+    total_leads: (leads || []).length,
+    hot_leads: (leads || []).filter(l => l.lead_score === 'HOT').length,
+    warm_leads: (leads || []).filter(l => l.lead_score === 'WARM').length,
+    cold_leads: (leads || []).filter(l => l.lead_score === 'COLD').length,
+    today_visits: (leads || []).filter(l => l.site_visit_date === today).length,
+    site_visit_scheduled: (leads || []).filter(l => l.lead_stage === 'site_visit_scheduled').length,
+    converted: (leads || []).filter(l => l.lead_stage === 'converted').length
   };
 
   res.json(stats);
-});
-
-// ─────────────────────────────────────────────
-//  CLIENT MANAGEMENT APIs
-// ─────────────────────────────────────────────
-
-// GET /api/clients — List clients
-app.get('/api/clients', adminAuth, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-
-  const { data, error } = await supabase
-    .from('clients')
-    .select('id, name, business_type, whatsapp_number, phone_number_id, status, contact_person, contact_phone, contact_email, created_at')
-    .order('created_at', { ascending: false });
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
 });
 
 // ─────────────────────────────────────────────

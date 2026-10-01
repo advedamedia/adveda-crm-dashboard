@@ -355,286 +355,83 @@
       <div class="page-header">
         <div>
           <h1>➕ Add New Client</h1>
-          <p>Set up a new WhatsApp chatbot in minutes</p>
+          <p>Create a standalone Real Estate CRM business account</p>
         </div>
       </div>
 
-      <div class="wizard-steps">
-        <div class="wizard-step active" id="wstep-1" onclick="goWizard(1)">
-          <span class="step-num">1</span>WhatsApp Setup
-        </div>
-        <div class="wizard-step" id="wstep-2" onclick="goWizard(2)">
-          <span class="step-num">2</span>Client Details
-        </div>
-        <div class="wizard-step" id="wstep-3" onclick="goWizard(3)">
-          <span class="step-num">3</span>AI Config
-        </div>
-        <div class="wizard-step" id="wstep-4" onclick="goWizard(4)">
-          <span class="step-num">4</span>Webhook
-        </div>
-      </div>
+      <div class="card" style="padding:28px; max-width:800px;">
+        <h2 style="margin-bottom:6px">🏢 Client Onboarding Form</h2>
+        <p style="color:var(--text-secondary);margin-bottom:24px">Enter business details, client login credentials, and n8n webhook URL.</p>
 
-      <!-- Step 1: WhatsApp API Guide -->
-      <div class="wizard-panel active" id="wpanel-1">
-        <div class="card" style="padding:28px">
-          <h2 style="margin-bottom:6px">📱 WhatsApp Business API Setup Guide</h2>
-          <p style="color:var(--text-secondary);margin-bottom:24px">Client ko ye steps khud karne hain. Unhe ye guide share karein.</p>
+        <div id="onboardingMsg"></div>
 
-          <div class="guide-steps">
-            <div class="guide-step">
-              <div class="guide-step-num">1</div>
-              <div class="guide-step-content">
-                <h4>Meta Business Account Banayein</h4>
-                <p>Client browser mein jaaye: <strong style="color:#67e8f9">business.facebook.com</strong> → "Create Account" → Company name, email, phone enter karein.</p>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">2</div>
-              <div class="guide-step-content">
-                <h4>Business Verification Complete Karein</h4>
-                <p>Business Suite → Settings → Security Centre → "Start Verification". GST certificate, incorporation certificate, ya utility bill upload karein. (2-5 din lag sakte hain)</p>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">3</div>
-              <div class="guide-step-content">
-                <h4>Meta Developer Account + App Banayein</h4>
-                <p><strong style="color:#67e8f9">developers.facebook.com</strong> → "My Apps" → "Create App" → "Business" type select karein → App banayein.</p>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">4</div>
-              <div class="guide-step-content">
-                <h4>WhatsApp Product Add Karein</h4>
-                <p>App Dashboard mein "Add Product" → "WhatsApp" → "Set Up" → Apna Business Account select karein.</p>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">5</div>
-              <div class="guide-step-content">
-                <h4>Phone Number Register Karein + OTP Verify Karein</h4>
-                <p>WhatsApp → Configuration → "Add Phone Number" → Number enter karein → OTP verify karein.</p>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">6</div>
-              <div class="guide-step-content">
-                <h4>Access Token Generate Karein</h4>
-                <p>WhatsApp → API Setup section mein → "Phone Number" note karein. System User Access Token banana: Business Settings → System Users → Token generate karein. Yeh token aapko next step mein dena hai.</p>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">7</div>
-              <div class="guide-step-content">
-                <h4>Phone Number ID Copy Karein</h4>
-                <p>WhatsApp → API Setup → "Phone Number ID" (numbers ka ek lambi string) copy karein. Yeh bhi aapko next step mein dena hai.</p>
-              </div>
-            </div>
-          </div>
+        <h3 style="font-size:14px; color:var(--primary); margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:6px;">1. Business Profile</h3>
 
-          <div class="alert alert-info" style="margin-top:24px">
-            ✅ Jab client ne <strong>Access Token</strong> aur <strong>Phone Number ID</strong> de diye, tab Next Step mein details fill karein.
-          </div>
-
-          <div style="display:flex;justify-content:flex-end;margin-top:24px">
-            <button class="btn btn-primary" onclick="goWizard(2)">Next: Client Details →</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2: Client Details Form -->
-      <div class="wizard-panel" id="wpanel-2">
-        <div class="card" style="padding:28px">
-          <h2 style="margin-bottom:6px">🏢 Client Details</h2>
-          <p style="color:var(--text-secondary);margin-bottom:24px">Client ki basic information aur WhatsApp credentials fill karein.</p>
-
-          <div id="onboardingMsg"></div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Company Name <span class="required">*</span></label>
-              <input type="text" id="ob_name" placeholder="e.g. Adveda Client Ltd"/>
-            </div>
-            <div class="form-group">
-              <label>Business Type</label>
-              <select id="ob_business_type">
-                <option>Real Estate</option>
-                <option>Education</option>
-                <option>Healthcare</option>
-                <option>E-Commerce</option>
-                <option>Restaurant / Food</option>
-                <option>Travel & Tourism</option>
-                <option>Finance / Insurance</option>
-                <option>Other</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>WhatsApp Business Number</label>
-              <input type="text" id="ob_whatsapp_number" placeholder="e.g. +91 98765 43210"/>
-            </div>
-            <div class="form-group">
-              <label>Contact Person Name</label>
-              <input type="text" id="ob_contact_person" placeholder="e.g. Mishti Sharma"/>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Contact Person Phone</label>
-              <input type="text" id="ob_contact_phone" placeholder="e.g. 9999888877"/>
-            </div>
-            <div class="form-group">
-              <label>Contact Person Email</label>
-              <input type="email" id="ob_contact_email" placeholder="e.g. client@advedamedia.com"/>
-            </div>
-          </div>
-
+        <div class="form-row">
           <div class="form-group">
-            <label>Client Login Password (for client dashboard) <span class="required">*</span></label>
-            <input type="password" id="ob_password" placeholder="Create a password for this client"/>
-          </div>
-
-          <hr class="form-divider"/>
-          <p style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:16px">🔑 WhatsApp API Credentials (from Meta Developer Dashboard)</p>
-
-          <div class="form-group">
-            <label>Phone Number ID <span class="required">*</span></label>
-            <input type="text" id="ob_phone_number_id" placeholder="e.g. 123456789012345"/>
-            <div class="input-hint">WhatsApp → API Setup → Phone Number ID</div>
-          </div>
-
-          <div class="form-group">
-            <label>Access Token <span class="required">*</span></label>
-            <input type="text" id="ob_access_token" placeholder="EAAxxxxxxxx..."/>
-            <div class="input-hint">System User Access Token from Meta Business Settings</div>
-          </div>
-
-          <div class="form-group">
-            <label>Verify Token (auto-generated, ya custom set karein)</label>
-            <input type="text" id="ob_verify_token" placeholder="Will be auto-generated if left blank"/>
-            <div class="input-hint">Yeh token Meta Webhook setup mein use hoga</div>
-          </div>
-
-          <div style="display:flex;gap:10px;justify-content:space-between;margin-top:24px">
-            <button class="btn btn-secondary" onclick="goWizard(1)">← Back</button>
-            <button class="btn btn-primary" onclick="goWizard(3)">Next: AI Config →</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3: AI Configuration -->
-      <div class="wizard-panel" id="wpanel-3">
-        <div class="card" style="padding:28px">
-          <h2 style="margin-bottom:6px">🤖 AI Configuration</h2>
-          <p style="color:var(--text-secondary);margin-bottom:24px">Bot ki personality, instructions aur knowledge base set karein.</p>
-
-          <div class="form-group">
-            <label>System Prompt <span class="required">*</span></label>
-            
-            <!-- AI Prompt Builder Helper -->
-            <div class="ai-prompt-helper" style="margin-bottom: 12px; padding: 12px; border: 1px dashed var(--primary); border-radius: 8px; background: rgba(103, 232, 249, 0.03);">
-              <h4 style="margin: 0 0 8px 0; color: var(--primary); font-size: 13px; display: flex; align-items: center; gap: 6px;">✨ AI Prompt Builder</h4>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <input type="text" id="ob_ai_desc" placeholder="e.g. Client Name: ABC Builders, Focus: Luxury Villas, Tone: Semi-formal" style="font-size: 12px; padding: 8px; flex: 1; min-width: 200px; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); border-radius: 4px;"/>
-                <button type="button" class="btn btn-primary btn-sm" onclick="generateSystemPrompt('ob_ai_desc', 'ob_system_prompt', this)" style="padding: 6px 12px; font-size: 12px;">Generate Prompt with AI 🚀</button>
-              </div>
-            </div>
-
-            <textarea id="ob_system_prompt" rows="12" placeholder="Bot ki poori instructions yahan paste karein...&#10;&#10;Example:&#10;You are [Bot Name], a [role] for [company name].&#10;Speak in Hinglish...&#10;Your goal is to..."></textarea>
-            <div class="input-hint">Aap AI Prompt Builder mein simple details enter karke automatic prompt generate kar sakte hain, ya manually paste kar sakte hain.</div>
-          </div>
-
-          <div class="form-group" style="padding: 12px; border: 1px dashed var(--primary); border-radius: 8px; background: rgba(103, 232, 249, 0.03); margin-bottom: 12px;">
-            <label style="color: var(--primary); font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 AI RAG Generator (Google Sheets)</label>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
-              <input type="text" id="ob_sheet_url" placeholder="Paste your Google Sheets Link here..." style="font-size: 12px; padding: 8px; flex: 1; min-width: 200px; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); border-radius: 4px;"/>
-              <button type="button" class="btn btn-primary btn-sm" onclick="generateRagFromSheet(this)" style="padding: 6px 12px; font-size: 12px;">Sync & Generate RAG 🔄</button>
-            </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="checkbox" id="ob_proceed_without_link" style="width: auto; margin: 0; cursor: pointer;"/>
-              <label for="ob_proceed_without_link" style="font-size: 12px; font-weight: normal; color: var(--text-secondary); margin: 0; cursor: pointer; user-select: none;">Proceed without Google Sheet link</label>
-            </div>
-            <div class="input-hint" style="margin-top: 6px;">Provide the Google Sheets URL to generate RAG, or check "Proceed without Google Sheet link" to input manually or leave empty.</div>
+            <label>Business / Company Name <span class="required">*</span></label>
+            <input type="text" id="ob_name" placeholder="e.g. Apex Luxury Real Estate"/>
           </div>
           <div class="form-group">
-            <label>Knowledge Base / Products (JSON format)</label>
-            <textarea id="ob_knowledge_base" rows="8" placeholder='[&#10;  {&#10;    "id": "product-1",&#10;    "name": "Product Name",&#10;    "price": "₹X",&#10;    "description": "..."&#10;  }&#10;]'></textarea>
-            <div class="input-hint">Client ke products/services ka data JSON format mein. Leave blank if not needed.</div>
-          </div>
-
-          <div class="form-group">
-            <label>Custom Gemini API Key (optional)</label>
-            <input type="text" id="ob_gemini_key" placeholder="Leave blank to use shared key"/>
-            <div class="input-hint">Agar client ki apni API key hai, yahan paste karo. Warna shared key use hogi.</div>
-          </div>
-
-          <div style="display:flex;gap:10px;justify-content:space-between;margin-top:24px">
-            <button class="btn btn-secondary" onclick="goWizard(2)">← Back</button>
-            <button class="btn btn-success" onclick="submitClient()">🚀 Create Client & Activate</button>
+            <label>Business Type</label>
+            <select id="ob_business_type">
+              <option>Real Estate Agency</option>
+              <option>Property Developer / Builder</option>
+              <option>Real Estate Brokerage</option>
+              <option>Commercial Property Manager</option>
+              <option>Other</option>
+            </select>
           </div>
         </div>
-      </div>
 
-      <!-- Step 4: Webhook Setup -->
-      <div class="wizard-panel" id="wpanel-4">
-        <div class="card" style="padding:28px">
-          <h2 style="margin-bottom:6px">🔗 Webhook Setup</h2>
-          <p style="color:var(--text-secondary);margin-bottom:24px">Ab Meta Developer Dashboard mein yeh webhook set karni hai.</p>
-
-          <div class="alert alert-success">✅ Client successfully added kar diya gaya! Ab neeche diye steps follow karein.</div>
-
-          <div class="guide-steps">
-            <div class="guide-step">
-              <div class="guide-step-num">1</div>
-              <div class="guide-step-content">
-                <h4>Meta Developer Dashboard kholein</h4>
-                <p>Client ka <strong style="color:#67e8f9">developers.facebook.com</strong> → Apna App kholein → WhatsApp → Configuration</p>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">2</div>
-              <div class="guide-step-content">
-                <h4>Webhook URL paste karein</h4>
-                <p>"Callback URL" field mein yeh URL paste karein:</p>
-                <div class="copy-box">
-                  <code id="webhookUrl">Loading...</code>
-                  <button class="copy-btn" onclick="copyText('webhookUrl', this)">📋 Copy</button>
-                </div>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">3</div>
-              <div class="guide-step-content">
-                <h4>Verify Token paste karein</h4>
-                <p>"Verify Token" field mein yeh token paste karein:</p>
-                <div class="copy-box">
-                  <code id="verifyTokenDisplay">Loading...</code>
-                  <button class="copy-btn" onclick="copyText('verifyTokenDisplay', this)">📋 Copy</button>
-                </div>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">4</div>
-              <div class="guide-step-content">
-                <h4>"Verify and Save" click karein</h4>
-                <p>Meta webhook verify karega → Green checkmark aayega → "messages" subscription enable karein.</p>
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="guide-step-num">5</div>
-              <div class="guide-step-content">
-                <h4>Test karein! 🎉</h4>
-                <p>Client ke WhatsApp number par koi message bhejein. Bot se reply aana chahiye.</p>
-              </div>
-            </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Contact Person Name</label>
+            <input type="text" id="ob_contact_person" placeholder="e.g. Rahul Sharma"/>
           </div>
-
-          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
-            <button class="btn btn-primary" onclick="showPage('clients')">View All Clients →</button>
+          <div class="form-group">
+            <label>Location / City</label>
+            <input type="text" id="ob_location" placeholder="e.g. Mumbai, Maharashtra"/>
           </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Contact Phone Number</label>
+            <input type="text" id="ob_contact_phone" placeholder="e.g. 9876543210"/>
+          </div>
+          <div class="form-group">
+            <label>Contact Email</label>
+            <input type="email" id="ob_contact_email" placeholder="e.g. client@apexrealestate.com"/>
+          </div>
+        </div>
+
+        <h3 style="font-size:14px; color:var(--primary); margin-top:20px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:6px;">2. Client Login & Credentials</h3>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Login Identifier / Username <span class="required">*</span></label>
+            <input type="text" id="ob_login_id" placeholder="e.g. apex_admin or client email"/>
+            <div class="input-hint">The username or phone/email used by the client to sign into their dashboard</div>
+          </div>
+          <div class="form-group">
+            <label>Client Password <span class="required">*</span></label>
+            <input type="password" id="ob_password" placeholder="Set password for this client"/>
+            <div class="input-hint">Password manually assigned by Admin</div>
+          </div>
+        </div>
+
+        <h3 style="font-size:14px; color:var(--primary); margin-top:20px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:6px;">3. Integrations & Automation</h3>
+
+        <div class="form-group">
+          <label>n8n Webhook URL (Optional)</label>
+          <input type="url" id="ob_n8n_webhook_url" placeholder="e.g. https://n8n.yourdomain.com/webhook/adveda-leads"/>
+          <div class="input-hint">Webhook URL for sending real-time lead updates to n8n workflows</div>
+        </div>
+
+        <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:24px">
+          <button class="btn btn-secondary" onclick="showPage('clients')">Cancel</button>
+          <button class="btn btn-primary btn-lg" onclick="submitClient()">🚀 Create Client Account</button>
         </div>
       </div>
     </div>
@@ -686,56 +483,72 @@
      CLIENT EDIT MODAL
 ══════════════════════════════════ -->
 <div class="modal-overlay" id="clientModal">
-  <div class="modal">
+  <div class="modal" style="max-width:650px;">
     <div class="modal-header">
-      <div><h2 id="clientModalTitle">Edit Client</h2></div>
+      <div><h2 id="clientModalTitle">Edit Client Account</h2></div>
       <button class="modal-close" onclick="closeModal('clientModal')">✕</button>
     </div>
     <div class="modal-body">
       <div id="clientModalMsg"></div>
-      <div class="form-group">
-        <label>Status</label>
-        <select id="edit_status">
-          <option value="active">Active ✅</option>
-          <option value="inactive">Inactive ⏸️</option>
-          <option value="setup">Setup Mode 🔧</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Client Login Password</label>
-        <input type="password" id="edit_password" placeholder="Leave blank to keep existing password"/>
-      </div>
-      <div class="form-group">
-        <label>Custom Gemini API Key (optional)</label>
-        <input type="text" id="edit_gemini_key" placeholder="Leave blank to use shared key"/>
-        <div class="input-hint">Agar client ki apni API key hai, yahan paste karo. Warna shared key use hogi.</div>
-      </div>
-      <div class="form-group">
-        <label>System Prompt</label>
-
-        <!-- AI Prompt Builder Helper (Edit Modal) -->
-        <div class="ai-prompt-helper" style="margin-bottom: 12px; padding: 12px; border: 1px dashed var(--primary); border-radius: 8px; background: rgba(103, 232, 249, 0.03);">
-          <h4 style="margin: 0 0 8px 0; color: var(--primary); font-size: 13px; display: flex; align-items: center; gap: 6px;">✨ AI Prompt Builder</h4>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <input type="text" id="edit_ai_desc" placeholder="e.g. Client Name: ABC Builders, Focus: Luxury Villas, Tone: Semi-formal" style="font-size: 12px; padding: 8px; flex: 1; min-width: 200px; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); border-radius: 4px;"/>
-            <button type="button" class="btn btn-primary btn-sm" onclick="generateSystemPrompt('edit_ai_desc', 'edit_system_prompt', this)" style="padding: 6px 12px; font-size: 12px;">Generate Prompt with AI 🚀</button>
-          </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Business Name</label>
+          <input type="text" id="edit_name" placeholder="Business name"/>
         </div>
-
-        <textarea id="edit_system_prompt" rows="10"></textarea>
-      </div>
-      <div class="form-group" style="padding: 12px; border: 1px dashed var(--primary); border-radius: 8px; background: rgba(103, 232, 249, 0.03); margin-bottom: 12px;">
-        <label style="color: var(--primary); font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Sync from Google Sheets</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="edit_sheet_url" placeholder="Paste your Google Sheets Link here..." style="font-size: 12px; padding: 8px; flex: 1; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); border-radius: 4px;"/>
-          <button type="button" class="btn btn-primary btn-sm" onclick="syncGoogleSheet(this)" style="padding: 6px 12px; font-size: 12px;">Sync Now 🔄</button>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="edit_status">
+            <option value="active">Active ✅</option>
+            <option value="inactive">Inactive ⏸️</option>
+          </select>
         </div>
-        <div class="input-hint" style="margin-top: 4px;">Paste the Google Sheets edit URL and click "Sync Now". The sheet must start with a header column named "Property Name".</div>
       </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Business Type</label>
+          <input type="text" id="edit_business_type" placeholder="e.g. Real Estate Agency"/>
+        </div>
+        <div class="form-group">
+          <label>Location / City</label>
+          <input type="text" id="edit_location" placeholder="e.g. Mumbai"/>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contact Person</label>
+          <input type="text" id="edit_contact_person" placeholder="Contact person name"/>
+        </div>
+        <div class="form-group">
+          <label>Contact Phone</label>
+          <input type="text" id="edit_contact_phone" placeholder="Phone number"/>
+        </div>
+      </div>
+
       <div class="form-group">
-        <label>Knowledge Base (JSON)</label>
-        <textarea id="edit_knowledge_base" rows="6"></textarea>
+        <label>Contact Email</label>
+        <input type="email" id="edit_contact_email" placeholder="Contact email"/>
       </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Login ID / Username</label>
+          <input type="text" id="edit_login_id" placeholder="Login identifier"/>
+        </div>
+        <div class="form-group">
+          <label>Reset Client Password</label>
+          <input type="password" id="edit_password" placeholder="Leave blank to keep existing password"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>⚡ n8n Webhook URL (Integrations)</label>
+        <input type="url" id="edit_n8n_webhook_url" placeholder="https://n8n.domain.com/webhook/..."/>
+        <div class="input-hint">Webhook URL for forwarding leads and events to n8n</div>
+      </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('clientModal')">Cancel</button>

@@ -609,17 +609,21 @@ async function loadClients() {
 
     // Populate sidebar selector
     const sel = document.getElementById('clientFilterSelect');
-    sel.innerHTML = '<option value="">All Clients</option>' +
-      clients.map(c => `<option value="${c.id}" ${c.id === selectedClientId ? 'selected' : ''}>${c.name}</option>`).join('');
+    if (sel) {
+      sel.innerHTML = '<option value="">All Clients</option>' +
+        clients.map(c => `<option value="${c.id}" ${c.id === selectedClientId ? 'selected' : ''}>${c.name}</option>`).join('');
+    }
 
     // Render client cards
     const grid = document.getElementById('clientsGrid');
+    if (!grid) return;
+
     if (!clients.length) {
       grid.innerHTML = `
         <div class="empty-state">
           <div class="empty-icon">🏢</div>
           <h3>No Clients Yet</h3>
-          <p>Add your first client to get started</p>
+          <p>Add your first Real Estate client to get started</p>
           <br/>
           <button class="btn btn-primary" onclick="showPage('onboarding')">➕ Add New Client</button>
         </div>`;
@@ -630,23 +634,36 @@ async function loadClients() {
       const isArchived = c.status === 'archived';
       return `
       <div class="client-card">
-        <div class="client-card-header" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+        <div class="client-card-header" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
           <div class="client-avatar">🏢</div>
           <div class="client-info">
             <div class="client-name">${c.name}</div>
-            <div class="client-type">${c.business_type || 'Business'}</div>
+            <div class="client-type">${c.business_type || 'Real Estate'} ${c.location ? `• 📍 ${c.location}` : ''}</div>
           </div>
           <div>${statusBadge(c.status)}</div>
         </div>
-        <div class="client-meta">
-          ${c.whatsapp_number ? `<span>📱 ${c.whatsapp_number}</span>` : ''}
+
+        <div class="client-meta" style="margin-bottom:6px">
           ${c.contact_person ? `<span>👤 ${c.contact_person}</span>` : ''}
+          ${c.contact_phone ? `<span>📞 ${c.contact_phone}</span>` : ''}
+          ${c.contact_email ? `<span>✉️ ${c.contact_email}</span>` : ''}
         </div>
-        <div class="client-meta">
-          <span style="font-family:monospace;font-size:11px;color:var(--text-muted)">ID: ${c.phone_number_id?.substring(0,12)}...</span>
+
+        <div class="client-meta" style="margin-bottom:8px">
+          <span style="font-family:monospace;font-size:11px;background:rgba(255,255,255,0.05);padding:3px 8px;border-radius:4px;color:var(--primary)">
+            🔑 Login ID: ${c.login_id || c.contact_email || '—'}
+          </span>
         </div>
+
+        ${c.n8n_webhook_url ? `
+          <div class="client-meta" style="margin-bottom:8px;font-size:11px;color:#10b981">
+            ⚡ n8n Webhook Connected
+          </div>
+        ` : ''}
+
         <div class="client-meta" style="font-size:11px">Added: ${formatDate(c.created_at)}</div>
-        <div class="client-actions" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 12px;">
+
+        <div class="client-actions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
           <button class="btn btn-secondary btn-sm" onclick="openClientEdit('${c.id}', event)">✏️ Edit</button>
           <button class="btn btn-secondary btn-sm" onclick="viewClientLeads('${c.id}', event)">👥 Leads</button>
           ${isArchived 
@@ -666,7 +683,8 @@ async function loadClients() {
 function viewClientLeads(clientId, e) {
   e?.stopPropagation();
   selectedClientId = clientId;
-  document.getElementById('clientFilterSelect').value = clientId;
+  const sel = document.getElementById('clientFilterSelect');
+  if (sel) sel.value = clientId;
   showPage('leads');
 }
 
@@ -691,160 +709,95 @@ async function openClientEdit(clientId, e) {
 
   const res = await fetch(`${API}/api/clients/${clientId}`, { headers: headers() });
   const client = await res.json();
-  document.getElementById('clientModalTitle').textContent = `Edit: ${client.name}`;
-  document.getElementById('edit_status').value = client.status;
-  document.getElementById('edit_system_prompt').value = client.system_prompt || '';
-  document.getElementById('edit_gemini_key').value = client.gemini_api_key || '';
-  document.getElementById('edit_password').value = ''; // Reset password field
-  document.getElementById('edit_sheet_url').value = ''; // Reset sheet url
-  document.getElementById('edit_knowledge_base').value =
-    typeof client.knowledge_base === 'string' ? client.knowledge_base : JSON.stringify(client.knowledge_base, null, 2);
-}
 
-async function syncGoogleSheet(btn) {
-  const url = document.getElementById('edit_sheet_url').value.trim();
-  if (!url) {
-    alert('Please enter a Google Sheets URL first.');
-    return;
-  }
-
-  const originalText = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Syncing...';
-
-  try {
-    const res = await fetch(`/api/clients/${currentClientEditId}/sync-sheet`, {
-      method: 'POST',
-      headers: headers(),
-      body: JSON.stringify({ sheetUrl: url })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      document.getElementById('edit_knowledge_base').value = JSON.stringify(data.client.knowledge_base, null, 2);
-      alert(`✅ Successfully synced ${data.count} properties from Google Sheets!`);
-    } else {
-      alert(`❌ Sync failed: ${data.error}`);
-    }
-  } catch (e) {
-    alert('❌ Could not connect to server.');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalText;
-  }
+  document.getElementById('clientModalTitle').textContent = `Edit Client: ${client.name}`;
+  if (document.getElementById('edit_name')) document.getElementById('edit_name').value = client.name || '';
+  if (document.getElementById('edit_status')) document.getElementById('edit_status').value = client.status || 'active';
+  if (document.getElementById('edit_business_type')) document.getElementById('edit_business_type').value = client.business_type || '';
+  if (document.getElementById('edit_location')) document.getElementById('edit_location').value = client.location || '';
+  if (document.getElementById('edit_contact_person')) document.getElementById('edit_contact_person').value = client.contact_person || '';
+  if (document.getElementById('edit_contact_phone')) document.getElementById('edit_contact_phone').value = client.contact_phone || '';
+  if (document.getElementById('edit_contact_email')) document.getElementById('edit_contact_email').value = client.contact_email || '';
+  if (document.getElementById('edit_login_id')) document.getElementById('edit_login_id').value = client.login_id || '';
+  if (document.getElementById('edit_password')) document.getElementById('edit_password').value = ''; // Blank unless resetting
+  if (document.getElementById('edit_n8n_webhook_url')) document.getElementById('edit_n8n_webhook_url').value = client.n8n_webhook_url || '';
 }
 
 async function saveClientEdit() {
-  const system_prompt = document.getElementById('edit_system_prompt').value.trim();
-  const status = document.getElementById('edit_status').value;
-  const gemini_api_key = document.getElementById('edit_gemini_key').value.trim() || null;
-  const password = document.getElementById('edit_password').value.trim();
+  const name = document.getElementById('edit_name')?.value.trim();
+  const status = document.getElementById('edit_status')?.value;
+  const business_type = document.getElementById('edit_business_type')?.value.trim();
+  const location = document.getElementById('edit_location')?.value.trim();
+  const contact_person = document.getElementById('edit_contact_person')?.value.trim();
+  const contact_phone = document.getElementById('edit_contact_phone')?.value.trim();
+  const contact_email = document.getElementById('edit_contact_email')?.value.trim();
+  const login_id = document.getElementById('edit_login_id')?.value.trim();
+  const password = document.getElementById('edit_password')?.value.trim();
+  const n8n_webhook_url = document.getElementById('edit_n8n_webhook_url')?.value.trim();
 
-  let knowledge_base;
-  const kbRaw = document.getElementById('edit_knowledge_base').value.trim();
-  try {
-    knowledge_base = kbRaw ? JSON.parse(kbRaw) : [];
-  } catch {
-    document.getElementById('clientModalMsg').innerHTML = '<div class="alert alert-error">❌ Knowledge Base JSON is invalid. Please fix it.</div>';
-    return;
-  }
+  const payload = {
+    name, status, business_type, location, contact_person,
+    contact_phone, contact_email, login_id, n8n_webhook_url
+  };
 
-  const payload = { system_prompt, status, knowledge_base, gemini_api_key };
   if (password) {
     payload.verify_token = password;
   }
 
-  const res = await fetch(`${API}/api/clients/${currentClientEditId}`, {
-    method: 'PUT', headers: headers(),
-    body: JSON.stringify(payload)
-  });
-  if (res.ok) {
-    closeModal('clientModal');
-    loadClients();
-  } else {
-    document.getElementById('clientModalMsg').innerHTML = '<div class="alert alert-error">❌ Error saving. Please try again.</div>';
-  }
-}
-
-// ══════════════════════════════════
-//  ONBOARDING WIZARD
-// ══════════════════════════════════
-let currentWizardStep = 1;
-
-function resetWizard() {
-  goWizard(1);
-  ['ob_name','ob_business_type','ob_whatsapp_number','ob_contact_person','ob_contact_phone','ob_contact_email',
-   'ob_phone_number_id','ob_access_token','ob_verify_token','ob_system_prompt','ob_knowledge_base','ob_gemini_key','ob_password']
-    .forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        if (el.tagName === 'SELECT') el.selectedIndex = 0;
-        else el.value = '';
-      }
+  try {
+    const res = await fetch(`${API}/api/clients/${currentClientEditId}`, {
+      method: 'PUT', headers: headers(),
+      body: JSON.stringify(payload)
     });
-  if (document.getElementById('ob_sheet_url')) {
-    document.getElementById('ob_sheet_url').value = '';
+    if (res.ok) {
+      closeModal('clientModal');
+      loadClients();
+    } else {
+      const data = await res.json();
+      document.getElementById('clientModalMsg').innerHTML = `<div class="alert alert-error">❌ ${data.error || 'Error saving changes.'}</div>`;
+    }
+  } catch (e) {
+    document.getElementById('clientModalMsg').innerHTML = '<div class="alert alert-error">❌ Server connection error.</div>';
   }
-  if (document.getElementById('ob_proceed_without_link')) {
-    document.getElementById('ob_proceed_without_link').checked = false;
-  }
-  document.getElementById('onboardingMsg').innerHTML = '';
 }
 
-function goWizard(step) {
-  for (let i = 1; i <= 4; i++) {
-    document.getElementById(`wpanel-${i}`).classList.remove('active');
-    document.getElementById(`wstep-${i}`).classList.remove('active');
-    if (i < step) document.getElementById(`wstep-${i}`).classList.add('done');
-    else document.getElementById(`wstep-${i}`).classList.remove('done');
-  }
-  document.getElementById(`wpanel-${step}`).classList.add('active');
-  document.getElementById(`wstep-${step}`).classList.add('active');
-  currentWizardStep = step;
-}
+// ══════════════════════════════════
+//  ONBOARDING / ADD CLIENT
+// ══════════════════════════════════
 
 async function submitClient() {
   const name = document.getElementById('ob_name').value.trim();
-  const phone_number_id = document.getElementById('ob_phone_number_id').value.trim();
-  const access_token = document.getElementById('ob_access_token').value.trim();
-  const system_prompt = document.getElementById('ob_system_prompt').value.trim();
+  const login_id = document.getElementById('ob_login_id').value.trim();
+  const password = document.getElementById('ob_password').value.trim();
 
-  if (!name || !phone_number_id || !access_token || !system_prompt) {
-    document.getElementById('onboardingMsg').innerHTML = '<div class="alert alert-error">❌ Please fill in all required fields (marked with *).</div>';
-    goWizard(2);
+  const msgDiv = document.getElementById('onboardingMsg');
+
+  if (!name) {
+    msgDiv.innerHTML = '<div class="alert alert-error">❌ Business Name is required.</div>';
     return;
   }
-
-  // Google Sheets link and "proceed without link" constraint validation
-  const sheetUrl = document.getElementById('ob_sheet_url').value.trim();
-  const proceedWithoutLink = document.getElementById('ob_proceed_without_link').checked;
-  const kbRaw = document.getElementById('ob_knowledge_base').value.trim();
-
-  if (!sheetUrl && !proceedWithoutLink && !kbRaw) {
-    document.getElementById('onboardingMsg').innerHTML = '<div class="alert alert-error">❌ Please either enter a Google Sheet link to generate RAG, or check "Proceed without Google Sheet link".</div>';
-    goWizard(3);
+  if (!login_id) {
+    msgDiv.innerHTML = '<div class="alert alert-error">❌ Client Login Identifier is required.</div>';
     return;
   }
-
-  let knowledge_base = [];
-  if (kbRaw) {
-    try { knowledge_base = JSON.parse(kbRaw); }
-    catch { document.getElementById('onboardingMsg').innerHTML = '<div class="alert alert-error">❌ Knowledge Base JSON is invalid.</div>'; goWizard(3); return; }
+  if (!password) {
+    msgDiv.innerHTML = '<div class="alert alert-error">❌ Client Password is required.</div>';
+    return;
   }
 
   const payload = {
     name,
     business_type: document.getElementById('ob_business_type').value,
-    whatsapp_number: document.getElementById('ob_whatsapp_number').value.trim(),
-    phone_number_id,
-    access_token,
-    verify_token: document.getElementById('ob_password').value.trim() || document.getElementById('ob_verify_token').value.trim() || undefined,
-    system_prompt,
-    knowledge_base,
-    gemini_api_key: document.getElementById('ob_gemini_key').value.trim() || undefined,
+    location: document.getElementById('ob_location').value.trim(),
     contact_person: document.getElementById('ob_contact_person').value.trim(),
     contact_phone: document.getElementById('ob_contact_phone').value.trim(),
     contact_email: document.getElementById('ob_contact_email').value.trim(),
+    login_id,
+    verify_token: password,
+    n8n_webhook_url: document.getElementById('ob_n8n_webhook_url').value.trim()
   };
+
+  msgDiv.innerHTML = '<div class="alert alert-info"><span class="spinner"></span> Creating client account...</div>';
 
   try {
     const res = await fetch(`${API}/api/clients`, {
@@ -852,20 +805,20 @@ async function submitClient() {
     });
     const data = await res.json();
     if (res.ok) {
-      lastCreatedVerifyToken = data.client?.verify_token || payload.verify_token || 'VERIFY_TOKEN';
-      // Show webhook URL and verify token in step 4
-      const host = window.location.origin;
-      document.getElementById('webhookUrl').textContent = `${host}/webhook`;
-      document.getElementById('verifyTokenDisplay').textContent = lastCreatedVerifyToken;
-      loadClients();
-      goWizard(4);
+      msgDiv.innerHTML = `<div class="alert alert-success">✅ Client "${name}" created successfully!</div>`;
+      setTimeout(() => {
+        // Clear fields
+        ['ob_name', 'ob_location', 'ob_contact_person', 'ob_contact_phone', 'ob_contact_email', 'ob_login_id', 'ob_password', 'ob_n8n_webhook_url']
+          .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        msgDiv.innerHTML = '';
+        loadClients();
+        showPage('clients');
+      }, 1500);
     } else {
-      document.getElementById('onboardingMsg').innerHTML = `<div class="alert alert-error">❌ Error: ${data.error}</div>`;
-      goWizard(2);
+      msgDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${data.error}</div>`;
     }
   } catch (e) {
-    document.getElementById('onboardingMsg').innerHTML = '<div class="alert alert-error">❌ Could not connect to server.</div>';
-    goWizard(2);
+    msgDiv.innerHTML = '<div class="alert alert-error">❌ Could not connect to server.</div>';
   }
 }
 
