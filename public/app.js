@@ -766,9 +766,14 @@ async function saveClientEdit() {
 //  ONBOARDING / ADD CLIENT
 // ══════════════════════════════════
 
-async function submitClient() {
+async function submitClient(e) {
+  if (e) e.preventDefault();
+  
   const msgDiv = document.getElementById('onboardingMsg');
   if (msgDiv) msgDiv.innerHTML = '';
+
+  const btn = document.getElementById('submitClientBtn') || document.querySelector('#page-onboarding .btn-primary');
+  const originalBtnText = btn ? btn.innerHTML : '🚀 Create Client Account';
 
   const getVal = (id) => {
     const el = document.getElementById(id);
@@ -776,55 +781,84 @@ async function submitClient() {
   };
 
   const name = getVal('ob_name');
-  const login_id = getVal('ob_login_id');
-  const password = getVal('ob_password');
+  let login_id = getVal('ob_login_id');
+  let password = getVal('ob_password');
+  const contact_email = getVal('ob_contact_email');
+  const contact_phone = getVal('ob_contact_phone');
 
-  if (!name) {
-    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Business Name is required.</div>';
-    return;
-  }
+  // Smart fallbacks so user is NEVER blocked by missing fields
   if (!login_id) {
-    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Client Login Identifier is required.</div>';
-    return;
+    login_id = contact_email || contact_phone || name.toLowerCase().replace(/[^a-z0-9]/g, '_');
   }
   if (!password) {
-    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Client Password is required.</div>';
+    password = 'Client@' + Math.floor(1000 + Math.random() * 9000);
+  }
+
+  if (!name) {
+    if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-error">❌ Business / Company Name is required.</div>';
+    alert('Please enter a Business / Company Name');
     return;
   }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating Client Account...';
+  }
+
+  if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-info"><span class="spinner"></span> Creating client account...</div>';
 
   const payload = {
     name,
     business_type: getVal('ob_business_type') || 'Real Estate Agency',
     location: getVal('ob_location'),
     contact_person: getVal('ob_contact_person'),
-    contact_phone: getVal('ob_contact_phone'),
-    contact_email: getVal('ob_contact_email'),
+    contact_phone,
+    contact_email,
     login_id,
     verify_token: password
   };
 
-  if (msgDiv) msgDiv.innerHTML = '<div class="alert alert-info"><span class="spinner"></span> Creating client account...</div>';
-
   try {
     const res = await fetch(`${API}/api/clients`, {
-      method: 'POST', headers: headers(), body: JSON.stringify(payload)
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload)
     });
+    
     const data = await res.json();
-    if (res.ok) {
-      if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-success">✅ Client "${name}" created successfully!</div>`;
+    
+    if (res.ok && (data.success || data.client)) {
+      if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-success">✅ Client "${name}" created successfully! (Login ID: <strong>${login_id}</strong>, Password: <strong>${password}</strong>)</div>`;
+      alert(`✅ Client "${name}" created successfully!\n\nLogin ID: ${login_id}\nPassword: ${password}`);
+      
       setTimeout(() => {
         ['ob_name', 'ob_location', 'ob_contact_person', 'ob_contact_phone', 'ob_contact_email', 'ob_login_id', 'ob_password']
           .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         if (msgDiv) msgDiv.innerHTML = '';
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalBtnText;
+        }
         loadClients();
         showPage('clients');
-      }, 1200);
+      }, 1500);
     } else {
-      if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${data.error || 'Failed to create client.'}</div>`;
+      const errText = data.error || 'Failed to create client.';
+      if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${errText}</div>`;
+      alert(`❌ Error: ${errText}`);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalBtnText;
+      }
     }
   } catch (e) {
     console.error('submitClient error:', e);
     if (msgDiv) msgDiv.innerHTML = `<div class="alert alert-error">❌ Could not connect to server: ${e.message}</div>`;
+    alert(`❌ Could not connect to server: ${e.message}`);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalBtnText;
+    }
   }
 }
 

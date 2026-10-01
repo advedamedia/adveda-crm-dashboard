@@ -365,7 +365,7 @@
         </div>
       </div>
 
-      <div class="card" style="padding:28px; max-width:800px;">
+      <form class="card" id="addClientForm" style="padding:28px; max-width:800px;" onsubmit="submitClient(event)">
         <h2 style="margin-bottom:6px">🏢 Client Onboarding Form</h2>
         <p style="color:var(--text-secondary);margin-bottom:24px">Enter business profile details and client login credentials.</p>
 
@@ -376,7 +376,7 @@
         <div class="form-row">
           <div class="form-group">
             <label>Business / Company Name <span class="required">*</span></label>
-            <input type="text" id="ob_name" placeholder="e.g. Apex Luxury Real Estate"/>
+            <input type="text" id="ob_name" placeholder="e.g. Apex Luxury Real Estate" required/>
           </div>
           <div class="form-group">
             <label>Business Type</label>
@@ -416,22 +416,22 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label>Login Identifier / Username <span class="required">*</span></label>
+            <label>Login Identifier / Username</label>
             <input type="text" id="ob_login_id" placeholder="e.g. apex_admin or client email"/>
-            <div class="input-hint">The username or phone/email used by the client to sign into their dashboard</div>
+            <div class="input-hint">Leave blank to auto-use email/phone</div>
           </div>
           <div class="form-group">
-            <label>Client Password <span class="required">*</span></label>
-            <input type="password" id="ob_password" placeholder="Set password for this client"/>
-            <div class="input-hint">Password manually assigned by Admin</div>
+            <label>Client Password</label>
+            <input type="text" id="ob_password" placeholder="Set password for this client"/>
+            <div class="input-hint">Leave blank to auto-generate password</div>
           </div>
         </div>
 
         <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:28px">
-          <button class="btn btn-secondary" onclick="showPage('clients')">Cancel</button>
-          <button class="btn btn-primary btn-lg" type="button" onclick="submitClient()">🚀 Create Client Account</button>
+          <button class="btn btn-secondary" type="button" onclick="showPage('clients')">Cancel</button>
+          <button class="btn btn-primary btn-lg" id="submitClientBtn" type="submit">🚀 Create Client Account</button>
         </div>
-      </div>
+      </form>
     </div>
 
     <!-- ── INTEGRATIONS & SETTINGS PAGE ── -->
